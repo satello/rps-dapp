@@ -30,18 +30,18 @@ class RPSGame extends Component {
     this.state = initialState;
   }
 
-  componentDidMount() {
-    this.setState({
-      contractSubmitted: true,
-      currentGameAddress: "0x15577aaa4ad12fa0857f22c5c377ea20907e96fd",
-      player1address: undefined,
-      player2Guess: null,
-      player2address: "0x3e7C893a4e6FBf2C25c13abcdb0E7390DA39aEbD",
-      selectionHash: "c37a16b112662e829ba29a4db20e52869dcd10207d4975c17f2819c4b11624ea",
-      stakedEther: "0.000001",
-      readyForReveal: false
-    });
-  }
+  // componentDidMount() {
+  //   this.setState({
+  //     contractSubmitted: true,
+  //     currentGameAddress: "0x15577aaa4ad12fa0857f22c5c377ea20907e96fd",
+  //     player1address: undefined,
+  //     player2Guess: null,
+  //     player2address: "0x3e7C893a4e6FBf2C25c13abcdb0E7390DA39aEbD",
+  //     selectionHash: "c37a16b112662e829ba29a4db20e52869dcd10207d4975c17f2819c4b11624ea",
+  //     stakedEther: "0.000001",
+  //     readyForReveal: false
+  //   });
+  // }
 
   resetGame() {
     this.setState(initialState);
@@ -93,11 +93,56 @@ class RPSGame extends Component {
     );
   }
 
+  // used to update state to current part of the game
+  getGameState(e) {
+    e.preventDefault();
+
+    const gameAddress = document.getElementById('game-address').value;
+
+    // FIXME this is an awful way to update the state. I hope there is a better way I am missing
+    const contractInstance = rpsGameContract.at(gameAddress);
+    if (contractInstance) {
+      contractInstance.j1((error, result) => {
+        // console.log(web3.toAscii(result));
+        this.setState({
+          player1address: result
+        });
+      });
+      contractInstance.j2((error, result) => {
+        this.setState({
+          player2address: result
+        });
+      });
+      contractInstance.c1Hash((error, result) => {
+        this.setState({
+          selectionHash: result
+        });
+      });
+      contractInstance.c2((error, result) => {
+        this.setState({
+          readyForReveal: !!(result),
+        });
+      });
+      contractInstance.stake((error, result) => {
+        this.setState({
+          stakedEther: web3.fromWei(result.c[0], 'ether')
+        });
+      });
+
+      this.setState({
+        contractSubmitted: true,
+        currentGameAddress: gameAddress
+      })
+    }
+
+
+  }
+
   submitPlayer2Guess() {
     if (!this.state.player2Guess) return;
 
     const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
-    contractInstance.play.sendTransaction(
+    contractInstance.play(
       web3.fromAscii(this.state.player2Guess),
       {
         from: web3.eth.accounts[0],
@@ -125,11 +170,12 @@ class RPSGame extends Component {
 
   render() {
     if (this.state.currentGameAddress) {
+      console.log(this.state);
       // address of user
       const currentUserAddress = web3.eth.accounts[0];
       let options;
 
-      if (currentUserAddress === this.state.player2address.toLowerCase()) {
+      if (this.state.player2address && currentUserAddress === this.state.player2address.toLowerCase()) {
         options = (
           <div className="player-2-guess">
             <select onChange={(e) => {this.setState({player2Guess: e.target.value})}}>
@@ -210,6 +256,16 @@ class RPSGame extends Component {
                 onChange={this.handleInputChange.bind(this)}
               />
               <button>Start Game</button>
+            </form>
+            <h4>Have a game address for an existing game?</h4>
+            <form onSubmit={this.getGameState.bind(this)}>
+              <label htmlFor="staked-ether">Game Address</label>
+              <input
+                id="game-address"
+                type="text"
+                placeholder="0x15577aaa4ad12fa0857f22c5c377ea20907e96fd"
+              />
+              <button>Open Game</button>
             </form>
           </div>
         </div>
