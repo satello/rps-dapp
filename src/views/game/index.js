@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import Web3 from 'web3';
 
 // local
 import './style.css';
@@ -11,6 +10,7 @@ const web3 = window.web3;
 // RPS contract ABI
 let rpsGameContract = web3.eth.contract(CONTRACT_ABI);
 
+// Clean state for new game
 const initialState = {
   currentGameAddress: null,
   player1address: null,
@@ -24,6 +24,22 @@ const initialState = {
   contractSubmitted: false,
   readyForReveal: false,
   gameComplete: false,
+}
+
+/*
+* Stateless dropdown compoennt for game options
+*/
+const MovesDropdown = (props) => {
+  return (
+    <select onChange={props.onChange}>
+      <option value={null}></option>
+      <option value={1}>Rock</option>
+      <option value={2}>Paper</option>
+      <option value={3}>Scissors</option>
+      <option value={4}>Lizard</option>
+      <option value={5}>Spock</option>
+    </select>
+  )
 }
 
 
@@ -59,10 +75,28 @@ class RPSGame extends Component {
     this.deployRPSGame(this.state.selectionHash, this.state.player2address, this.state.stakedEther);
   }
 
+  getGameState(e) {
+    e.preventDefault();
+    const gameAddress = document.getElementById('game-address').value;
+
+    this.loadStateFromBlockchain(gameAddress);
+  }
+
+  player1Reveal(e) {
+    e.preventDefault();
+    // TODO error handling
+    if (!this.state.player1Guess || !this.state.salt) return;
+
+    this.submitSolution();
+  }
+
   /*
   * Listen to blockchain for tx to be mined. Once Tx is mined refresh game state from blockchain
+  * TODO have some mechanism to stop watching if tx not picked up in n blocks
   */
   listenForHash(txHash) {
+    // FIXME not a huge fan of this hack
+    const _this = this;
     // Wait for tx to be mined
     var filter = web3.eth.filter('latest').watch((err, blockHash) => {
       // Get info about latest Ethereum block
@@ -73,14 +107,13 @@ class RPSGame extends Component {
           filter.stopWatching();
           filter = null;
           // we aren't waiting on a tx anymore
-          this.setState({
+          _this.setState({
             pendingTxHash: null
           });
           // sync game state with blockchain
-          this.getGameState();
+          _this.loadStateFromBlockchain(_this.state.currentGameAddress);
         }
       });
-      // Tx hash not found yet?
     });
   }
 
@@ -89,7 +122,7 @@ class RPSGame extends Component {
   * @params
   * selectionHash <bytes32 string>: hashed RPS commitment. keccak256(SELECTION, salt)
   * opponentAddress <string>: address of opponent
-  * stakedEther <int>: number of wei to stake on the game
+  * stakedEther <int>: number of ether to stake on the game
   */
   deployRPSGame(selectionHash, opponentAddress, stakedEther) {
     const rpsGame = rpsGameContract.new(
@@ -103,12 +136,12 @@ class RPSGame extends Component {
       },
       function (e, contract){
         if (e) {
+          // TODO error handling
           console.log(e);
         }
         if (contract && typeof contract.address !== 'undefined') {
           console.log('Contract mined! address: ' + contract.address + ' transactionHash: ' + contract.transactionHash);
 
-          // TODO will this return in time or do we need a promise?
           this.setState({
             currentGameAddress: rpsGame.address,
             player1address: web3.eth.accounts[0],
@@ -124,12 +157,11 @@ class RPSGame extends Component {
     );
   }
 
-  // used to update state to current part of the game
-  getGameState(e) {
-    e.preventDefault();
-
-    const gameAddress = document.getElementById('game-address').value;
-
+  /*
+  * Update component state to reflect what is on blockchain
+  * TODO Very messy way of doing this. Come up with better state system
+  */
+  loadStateFromBlockchain(gameAddress) {
     // FIXME this is an awful way to update the state. I hope there is a better way I am missing
     const contractInstance = rpsGameContract.at(gameAddress);
     if (contractInstance) {
@@ -167,6 +199,10 @@ class RPSGame extends Component {
     }
   }
 
+  /*
+  * Call play() in contract on chain with player2's guess
+  * Use same staked Ether as player1
+  */
   submitPlayer2Guess() {
     if (!this.state.player2Guess) return;
     console.log(this.state.player2Guess);
@@ -190,12 +226,10 @@ class RPSGame extends Component {
     )
   }
 
-  player1Reveal(e) {
-    e.preventDefault();
-
-    // FIXME give user an error message
-    if (!this.state.player1Guess || !this.state.salt) return;
-
+  /*
+  * Call solve() in on chain contract
+  */
+  submitSolution() {
     const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
     contractInstance.solve(
       this.state.player1Guess,
@@ -237,6 +271,7 @@ class RPSGame extends Component {
       );
     }
 
+    // game over
     if (this.state.gameComplete) {
       return (
         <div className="RPSGame">
@@ -248,10 +283,8 @@ class RPSGame extends Component {
       )
     }
 
-    // last step
+    // reveal step
     if (this.state.readyForReveal) {
-      console.log(this.state);
-
       const currentUserAddress = web3.eth.accounts[0];
       let options;
 
@@ -259,14 +292,7 @@ class RPSGame extends Component {
         options = (
           <div className="player-1-reveal">
             <form onSubmit={this.player1Reveal.bind(this)}>
-              <select onChange={(e) => {this.setState({player1Guess: e.target.value})}}>
-                <option value={null}></option>
-                <option value={1}>Rock</option>
-                <option value={2}>Paper</option>
-                <option value={3}>Scissors</option>
-                <option value={4}>Lizard</option>
-                <option value={5}>Spock</option>
-              </select>
+              <MovesDropdown onChange={(e) => {this.setState({player1Guess: e.target.value})}}/>
               <label htmlFor="salt">Salt</label>
               <input type="number" id="salt" name="salt" onChange={this.handleInputChange.bind(this)}/>
               <button>Submit</button>
@@ -274,7 +300,6 @@ class RPSGame extends Component {
           </div>
         )
       }
-
       return (
         <div className="RPSGame">
           <div className="intro">
@@ -290,9 +315,8 @@ class RPSGame extends Component {
       )
     }
 
-    // second step
+    // player 2 selection step
     if (this.state.currentGameAddress) {
-      console.log(this.state);
       // address of user
       const currentUserAddress = web3.eth.accounts[0];
       let options;
@@ -300,19 +324,11 @@ class RPSGame extends Component {
       if (this.state.player2address && currentUserAddress === this.state.player2address.toLowerCase()) {
         options = (
           <div className="player-2-guess">
-            <select onChange={(e) => {this.setState({player2Guess: e.target.value})}}>
-              <option value={null}></option>
-              <option value={1}>Rock</option>
-              <option value={2}>Paper</option>
-              <option value={3}>Scissors</option>
-              <option value={4}>Lizard</option>
-              <option value={5}>Spock</option>
-            </select>
+            <MovesDropdown onChange={(e) => {this.setState({player2Guess: e.target.value})}}/>
             <div className="btn" onClick={this.submitPlayer2Guess.bind(this)}>Submit</div>
           </div>
         )
       }
-
       return (
         <div className="RPSGame">
           <div className="intro">
@@ -341,13 +357,13 @@ class RPSGame extends Component {
             <form onSubmit={(e) => this.startGame(e)}>
               <label htmlFor="selection-hash">
                 Selection Hash: keccak256 hash your selection (one of: [Rock: 1, Paper: 2, Scissors: 3, Spock: 4, Lizard: 5]),
-                and a salt you select. Make sure you don't forget your salt!
+                and a salt you select. Make sure you don't forget your salt! (e.g. to select Rock hash keccak256(1, salt))
               </label>
               <input
                 id="selection-hash"
                 name="selectionHash"
                 type="text"
-                placeholder="e.g. keccak256(1, 153)"
+                placeholder="e.g. 0x9b68e489a07c86105b2c34adda59d3851d6f33abd41be6e9559cf783147db5dd"
                 onChange={this.handleInputChange.bind(this)}
               />
               <label htmlFor="opponent-address">Address of Opponent</label>
@@ -382,7 +398,6 @@ class RPSGame extends Component {
         </div>
       )
     }
-
   }
 }
 
