@@ -1,0 +1,36 @@
+{
+  "name": "RPS-DApp",
+  "homepage": "https://satello.github.io/",
+  "version": "1.0.0",
+  "private": false,
+  "devDependencies": {
+    "custom-react-scripts": "0.0.23"
+  },
+  "dependencies": {
+    "bootstrap": "^4.0.0-alpha.6",
+    "draft-js": "^0.10.0",
+    "gh-pages": "^1.0.0",
+    "lodash": "^4.13.1",
+    "react": "^15.4.2",
+    "react-addons-css-transition-group": "^15.4.2",
+    "react-addons-transition-group": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "react-draft-wysiwyg": "^1.7.6",
+    "react-icons": "^2.2.3",
+    "react-notification-system": "^0.2.12",
+    "react-router": "^3.0.2",
+    "react-router-redux": "^4.0.8",
+    "react-scrollbar": "^0.5.1",
+    "react-select": "^1.0.0-rc.3",
+    "reactable": "^0.14.1",
+    "web3": "^0.19.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "predeploy": "yarn run build",
+    "deploy": "gh-pages -d build"
+  }
+}

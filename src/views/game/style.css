@@ -1,0 +1,19 @@
+.RPSGame {
+  margin: 0px 50px 0px 50px;
+}
+
+.RPSGame .start-game {
+  margin-top: 50px;
+}
+
+.RPSGame .start-game label {
+  display: block;
+}
+.RPSGame .start-game input {
+  width: 50%;
+  margin-bottom: 20px;
+}
+
+.RPSGame .start-game button {
+  display: block;
+}
