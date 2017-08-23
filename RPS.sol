@@ -100,10 +100,6 @@ contract RPS{
             return (_c1>_c2);
     }
 
-    function hello() constant returns (string){
-      return "hello";
-    }
-
 }
 
 contract Hasher{

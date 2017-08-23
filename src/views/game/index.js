@@ -1,15 +1,25 @@
 import React, { Component } from 'react';
-import Web3 from 'web3';
 
 // local
 import './style.css';
 import { CONTRACT_BYTECODE, CONTRACT_ABI } from '../../constants.js';
 
-// initialze web3
-const web3 = new Web3(Web3.givenProvider);
+// get web3 instance initialized in public/index.html
+const web3 = window.web3;
 
 // RPS contract ABI
 const rpsGameContract = web3.eth.contract(CONTRACT_ABI);
+
+const initialState = {
+  currentGameAddress: null,
+  player1address: null,
+  player2address: null,
+  stakedEther: 0,
+  selectionHash: null,
+  player2Guess: null,
+  contractSubmitted: false,
+  readyForReveal: false,
+}
 
 
 class RPSGame extends Component {
@@ -17,36 +27,35 @@ class RPSGame extends Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      currentGameAddress: null,
-      player1address: null,
-      player2address: null,
-      stakedWei: 0,
-      selectionHash: null,
-    }
+    this.state = initialState;
+  }
+
+  componentDidMount() {
+    this.setState({
+      contractSubmitted: true,
+      currentGameAddress: "0x15577aaa4ad12fa0857f22c5c377ea20907e96fd",
+      player1address: undefined,
+      player2Guess: null,
+      player2address: "0x3e7C893a4e6FBf2C25c13abcdb0E7390DA39aEbD",
+      selectionHash: "c37a16b112662e829ba29a4db20e52869dcd10207d4975c17f2819c4b11624ea",
+      stakedEther: "0.000001",
+      readyForReveal: false
+    });
   }
 
   resetGame() {
-    this.setState({
-      currentGameAddress: null,
-      player1address: null,
-      player2address: null,
-      stakedWei: 0,
-      selectionHash: null,
-    })
+    this.setState(initialState);
   }
 
   startGame(e) {
     e.preventDefault();
-    console.log("getting here");
-    console.log(this.state);
 
-    if (!this.state.player2address || !this.state.stakedWei || !this.state.selectionHash) {
+    if (!this.state.player2address || !this.state.stakedEther || !this.state.selectionHash) {
       // TODO display error message to user
       return;
     }
 
-    this.deployRPSGame(this.state.selectionHash, this.state.player2address, this.state.stakedWei);
+    this.deployRPSGame(this.state.selectionHash, this.state.player2address, this.state.stakedEther);
   }
 
   /*
@@ -54,10 +63,9 @@ class RPSGame extends Component {
   * @params
   * selectionHash <bytes32 string>: hashed RPS commitment. keccak256(SELECTION, salt)
   * opponentAddress <string>: address of opponent
-  * stakedWei <int>: number of wei to stake on the game
+  * stakedEther <int>: number of wei to stake on the game
   */
-  deployRPSGame(selectionHash, opponentAddress, stakedWei) {
-    // contract object
+  deployRPSGame(selectionHash, opponentAddress, stakedEther) {
     const rpsGame = rpsGameContract.new(
       selectionHash,
       opponentAddress,
@@ -65,18 +73,45 @@ class RPSGame extends Component {
        from: web3.eth.accounts[0],
        data: CONTRACT_BYTECODE,
        gas: '4300000',
-       value: stakedWei,
-      }
+       value: web3.toWei(stakedEther, 'ether'),
+      },
+      function (e, contract){
+        if (contract && typeof contract.address !== 'undefined') {
+          console.log('Contract mined! address: ' + contract.address + ' transactionHash: ' + contract.transactionHash);
+
+          // TODO will this return in time or do we need a promise?
+          this.setState({
+            currentGameAddress: rpsGame.address,
+            player1address: web3.eth.accounts[0],
+          });
+        }
+
+        this.setState({
+          contractSubmitted: true
+        })
+      }.bind(this)
     );
+  }
 
-    console.log(rpsGame.address);
-    console.log(rpsGame.transactionHash);
+  submitPlayer2Guess() {
+    if (!this.state.player2Guess) return;
 
-    // TODO will this return in time or do we need a promise?
-    this.setState({
-      currentGameAddress: rpsGame.address,
-      player1address: web3.eth.accounts[0].address,
-    })
+    const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
+    contractInstance.play.sendTransaction(
+      web3.fromAscii(this.state.player2Guess),
+      {
+        from: web3.eth.accounts[0],
+        gas: '4300000',
+        value: web3.toWei(this.state.stakedEther, 'ether'),
+      },function(error, transactionHash) {
+        if (!error) {
+          console.log("player2 guess tx hash: " + transactionHash);
+          this.setState({
+            readyForReveal: true
+          })
+        }
+      }.bind(this)
+    )
   }
 
   handleInputChange(event) {
@@ -91,15 +126,49 @@ class RPSGame extends Component {
   render() {
     if (this.state.currentGameAddress) {
       // address of user
-      const currentUserAddress = web3.eth.accounts[0].address;
+      const currentUserAddress = web3.eth.accounts[0];
+      let options;
 
-      // if (currentUserAddress != )
+      if (currentUserAddress === this.state.player2address.toLowerCase()) {
+        options = (
+          <div className="player-2-guess">
+            <select onChange={(e) => {this.setState({player2Guess: e.target.value})}}>
+              <option value={null}></option>
+              <option value="Rock">Rock</option>
+              <option value="Paper">Paper</option>
+              <option value="Scissors">Scissors</option>
+              <option value="Lizard">Lizard</option>
+              <option value="Spock">Spock</option>
+            </select>
+            <div className="btn" onClick={this.submitPlayer2Guess.bind(this)}>Submit</div>
+          </div>
+        )
+      }
+
       return (
         <div className="RPSGame">
-          <p>In a game</p>
+          <div className="intro">
+            <h1>Player 2 Input Guess</h1>
+            <p>Player 1 address: {this.state.player1address}</p>
+            <p>Player 2 address: {this.state.player2address}</p>
+            <p>Ether Stake: {this.state.stakedEther}</p>
+            <p>Note: Inputs will not be visible unless current user is player 2</p>
+          </div>
+          {options}
         </div>
       )
     } else {
+      if (this.state.contractSubmitted) {
+        return (
+          <div className="RPSGame">
+            <div className="intro">
+              <h1>Contract Has Been Submitted....</h1>
+              <p>Please wait for contract to be mined. This may take several minutes....</p>
+            </div>
+            <div className="btn" onClick={this.resetGame.bind(this)}>Start Over</div>
+          </div>
+        );
+      }
       return (
         <div className="RPSGame">
           <div className="intro">
@@ -135,8 +204,8 @@ class RPSGame extends Component {
               <label htmlFor="staked-ether">Ether to bid</label>
               <input
                 id="staked-ether"
-                name="stakedWei"
-                type="number"
+                name="stakedEther"
+                type="text"
                 placeholder="1"
                 onChange={this.handleInputChange.bind(this)}
               />

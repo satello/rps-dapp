@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import {Router, browserHistory} from 'react-router';
+import Web3 from 'web3';
 
 // routes
 import {Route, IndexRoute} from 'react-router';
