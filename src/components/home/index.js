@@ -3,7 +3,7 @@ import { browserHistory } from 'react-router';
 
 // local
 import './style.css';
-import { CONTRACT_BYTECODE, CONTRACT_ABI } from '../../constants.js';
+import { CONTRACT_BYTECODE, CONTRACT_ABI, GAS_LIMIT } from '../../constants.js';
 
 // get web3 instance initialized in public/index.html
 const web3 = window.web3;
@@ -51,7 +51,7 @@ class Home extends Component {
       {
        from: web3.eth.accounts[0],
        data: CONTRACT_BYTECODE,
-       gas: '4300000',
+       gas: GAS_LIMIT,
        value: web3.toWei(stakedEther, 'ether'),
       },
       function (e, contract){

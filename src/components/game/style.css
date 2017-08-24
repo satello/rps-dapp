@@ -17,3 +17,8 @@
 .RPSGame .start-game button {
   display: block;
 }
+
+.RPSGame .timeout-btn {
+  background-color: #cccccc;
+  margin-top: 15px;
+}

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 // local
 import { PendingTxHashMessage } from '../home';
 import './style.css';
-import { CONTRACT_ABI } from '../../constants.js';
+import { CONTRACT_ABI, GAS_LIMIT } from '../../constants.js';
 
 // get web3 instance initialized in public/index.html
 const web3 = window.web3;
@@ -14,9 +14,9 @@ let rpsGameContract = web3.eth.contract(CONTRACT_ABI);
 // Clean state for new game
 const initialState = {
   currentGameAddress: null,
-  player1address: null,
-  player2address: null,
-  stakedEther: 0,
+  player1Address: null,
+  player2Address: null,
+  stakedEther: null,
   selectionHash: null,
   player1Guess: null,
   salt: null,
@@ -56,16 +56,6 @@ class RPSGame extends Component {
   componentDidMount() {
     // load state of game from blockchain
     this.loadStateFromBlockchain(this.state.currentGameAddress);
-  }
-
-  componentDidUpdate() {
-    console.log(this.state);
-    // game has ended. stake is 0
-    if (!this.state.gameComplete && this.state.readyForReveal && this.state.stakedEther === 0) {
-      this.setState({
-        gameComplete: true
-      });
-    }
   }
 
   player1Reveal(e) {
@@ -114,12 +104,12 @@ class RPSGame extends Component {
       contractInstance.j1((error, result) => {
         // console.log(web3.toAscii(result));
         this.setState({
-          player1address: result
+          player1Address: result
         });
       });
       contractInstance.j2((error, result) => {
         this.setState({
-          player2address: result
+          player2Address: result
         });
       });
       contractInstance.c1Hash((error, result) => {
@@ -131,10 +121,19 @@ class RPSGame extends Component {
       contractInstance.c2((error, result) => {
         const readyForReveal = !!(web3.toDecimal(result))
         contractInstance.stake((error, result) => {
-          this.setState({
-            stakedEther: parseInt(web3.fromWei(web3.toDecimal(result), 'ether'), 10),
-            readyForReveal: readyForReveal
-          });
+          const stakedEther = web3.fromWei(web3.toDecimal(result), 'ether');
+          // game is over if there is no more ether staked
+          if (stakedEther == 0) {
+            this.setState({
+              gameComplete: true
+            });
+          } else {
+            this.setState({
+              stakedEther: stakedEther,
+              readyForReveal: readyForReveal
+            });
+          }
+
         });
       });
     }
@@ -146,14 +145,12 @@ class RPSGame extends Component {
   */
   submitPlayer2Guess() {
     if (!this.state.player2Guess) return;
-    console.log(this.state.player2Guess);
-
     const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
     contractInstance.play(
       this.state.player2Guess,
       {
         from: web3.eth.accounts[0],
-        gas: '4300000',
+        gas: GAS_LIMIT,
         value: web3.toWei(this.state.stakedEther, 'ether'),
       },function(error, transactionHash) {
         if (error) {
@@ -179,7 +176,7 @@ class RPSGame extends Component {
       this.state.salt,
       {
         from: web3.eth.accounts[0],
-        gas: '4300000',
+        gas: GAS_LIMIT,
       },function(error, transactionHash) {
         if (!error) {
           this.listenForHash(transactionHash);
@@ -189,6 +186,39 @@ class RPSGame extends Component {
         }
       }.bind(this)
     )
+  }
+
+  /*
+  * Call solve() in on chain contract
+  */
+  callTimeout() {
+    const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
+    const playerAddress = web3.eth.accounts[0];
+    if (playerAddress === this.state.player1Address) {
+      contractInstance.j2Timeout({
+        from: playerAddress,
+        gas: GAS_LIMIT,
+      },function(error, transactionHash) {
+        if (!error) {
+          this.listenForHash(transactionHash);
+          this.setState({
+            pendingTxHash: transactionHash
+          });
+        }
+      }.bind(this))
+    } else if (playerAddress === this.state.player2Address) {
+      contractInstance.j1Timeout({
+        from: playerAddress,
+        gas: GAS_LIMIT,
+      },function(error, transactionHash) {
+        if (!error) {
+          this.listenForHash(transactionHash);
+          this.setState({
+            pendingTxHash: transactionHash
+          });
+        }
+      }.bind(this))
+    }
   }
 
   handleInputChange(event) {
@@ -201,31 +231,28 @@ class RPSGame extends Component {
   }
 
   render() {
+    let body;
     // waiting for pending tx
     if (this.state.pendingTxHash) {
-      return (
+      body = (
         <PendingTxHashMessage pendingTxHash={this.state.pendingTxHash} />
       )
     }
-
     // game over
-    if (this.state.gameComplete) {
-      return (
-        <div className="RPSGame">
+    else if (this.state.gameComplete) {
+      body = (
           <div className="intro">
             <h1>Game Over</h1>
             <h4>Funds have been released</h4>
           </div>
-        </div>
       )
     }
-
     // reveal step
-    if (this.state.readyForReveal) {
+    else if (this.state.readyForReveal) {
       const currentUserAddress = web3.eth.accounts[0];
       let options;
 
-      if (this.state.player1address && currentUserAddress === this.state.player1address.toLowerCase()) {
+      if (this.state.player1Address && currentUserAddress === this.state.player1Address.toLowerCase()) {
         options = (
           <div className="player-1-reveal">
             <form onSubmit={this.player1Reveal.bind(this)}>
@@ -237,13 +264,13 @@ class RPSGame extends Component {
           </div>
         )
       }
-      return (
-        <div className="RPSGame">
+      body = (
+        <div>
           <div className="intro">
             <h1>Player 1 Reveal</h1>
             <h3>Game Address: {this.state.currentGameAddress}</h3>
-            <p>Player 1 address: {this.state.player1address}</p>
-            <p>Player 2 address: {this.state.player2address}</p>
+            <p>Player 1 address: {this.state.player1Address}</p>
+            <p>Player 2 address: {this.state.player2Address}</p>
             <p>Ether Stake: {this.state.stakedEther}</p>
             <p>Note: Inputs will not be visible unless current user is player 2</p>
           </div>
@@ -251,14 +278,13 @@ class RPSGame extends Component {
         </div>
       )
     }
-
     // player 2 selection step
-    if (this.state.currentGameAddress) {
+    else if (this.state.currentGameAddress) {
       // address of user
       const currentUserAddress = web3.eth.accounts[0];
       let options;
 
-      if (this.state.player2address && currentUserAddress === this.state.player2address.toLowerCase()) {
+      if (this.state.player2Address && currentUserAddress === this.state.player2Address.toLowerCase()) {
         options = (
           <div className="player-2-guess">
             <MovesDropdown onChange={(e) => {this.setState({player2Guess: e.target.value})}}/>
@@ -266,22 +292,27 @@ class RPSGame extends Component {
           </div>
         )
       }
-      return (
-        <div className="RPSGame">
+      body = (
+        <div>
           <div className="intro">
             <h1>Player 2 Input Guess</h1>
             <h3>Game Address: {this.state.currentGameAddress}</h3>
-            <p>Player 1 address: {this.state.player1address}</p>
-            <p>Player 2 address: {this.state.player2address}</p>
+            <p>Player 1 address: {this.state.player1Address}</p>
+            <p>Player 2 address: {this.state.player2Address}</p>
             <p>Ether Stake: {this.state.stakedEther}</p>
             <p>Note: Inputs will not be visible unless current user is player 2</p>
           </div>
           {options}
         </div>
       )
-    } else {
-      return false;
     }
+
+    return (
+      <div className="RPSGame">
+        <div className="btn timeout-btn" onClick={this.callTimeout.bind(this)}>Call Timeout</div>
+        {body}
+      </div>
+    )
   }
 }
 
