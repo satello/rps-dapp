@@ -6,8 +6,9 @@ import Web3 from 'web3';
 // routes
 import {Route, IndexRoute} from 'react-router';
 
-// views
-import Game from './views/game';
+// components
+import Home from './components/home';
+import Game from './components/game';
 
 // import main style dependency file
 import './index.css';
@@ -30,7 +31,8 @@ function startApp() {
     <div>
       <Router history={browserHistory}>
         <Route component={App} path='/'>
-            <IndexRoute component={Game} />
+            <IndexRoute component={Home} />
+            <Route path=':gameAddress' component={Game} />
         </Route>
       </Router>
     </div>,
