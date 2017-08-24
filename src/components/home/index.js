@@ -45,8 +45,7 @@ class Home extends Component {
   * stakedEther <int>: number of ether to stake on the game
   */
   deployRPSGame(selectionHash, opponentAddress, stakedEther) {
-
-    const rpsGame = rpsGameContract.new(
+    rpsGameContract.new(
       web3.toBigNumber(selectionHash),
       web3.toBigNumber(opponentAddress.toLowerCase()),
       {
@@ -75,21 +74,15 @@ class Home extends Component {
 
   startGame(e) {
     e.preventDefault();
-
     if (!this.state.player2address || !this.state.stakedEther || !this.state.selectionHash) {
-      // TODO display error message to user
+      // TODO error handling
       return;
     }
-
-    console.log(this.state.selectionHash);
-    console.log(this.state.player2address);
-    console.log(this.state.stakedEther);
     this.deployRPSGame(this.state.selectionHash, this.state.player2address, this.state.stakedEther);
   }
 
   goToGame(e) {
     e.preventDefault();
-
     const gameAddress = document.getElementById('game-address').value;
     browserHistory.push('/' + gameAddress);
   }
@@ -97,7 +90,6 @@ class Home extends Component {
   handleInputChange(event) {
     const target = event.target;
     const name = target.name;
-
     this.setState({
       [name]: target.value
     });

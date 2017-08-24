@@ -22,7 +22,6 @@ const initialState = {
   salt: null,
   player2Guess: null,
   pendingTxHash: null,
-  contractSubmitted: false,
   readyForReveal: false,
   gameComplete: false,
 }
@@ -48,7 +47,6 @@ class RPSGame extends Component {
 
   constructor(props) {
     super(props);
-
     // set up game with game address in uri
     this.state = Object.assign(initialState, {
       currentGameAddress: this.props.params.gameAddress
@@ -61,6 +59,7 @@ class RPSGame extends Component {
   }
 
   componentDidUpdate() {
+    console.log(this.state);
     // game has ended. stake is 0
     if (!this.state.gameComplete && this.state.readyForReveal && this.state.stakedEther === 0) {
       this.setState({
@@ -128,21 +127,16 @@ class RPSGame extends Component {
           selectionHash: result
         });
       });
+      // order matters with these two
       contractInstance.c2((error, result) => {
-        this.setState({
-          readyForReveal: !!(web3.toDecimal(result)),
+        const readyForReveal = !!(web3.toDecimal(result))
+        contractInstance.stake((error, result) => {
+          this.setState({
+            stakedEther: parseInt(web3.fromWei(web3.toDecimal(result), 'ether'), 10),
+            readyForReveal: readyForReveal
+          });
         });
       });
-      contractInstance.stake((error, result) => {
-        this.setState({
-          stakedEther: web3.fromWei(web3.toDecimal(result), 'ether')
-        });
-      });
-
-      this.setState({
-        contractSubmitted: true,
-        currentGameAddress: gameAddress
-      })
     }
   }
 
@@ -162,7 +156,9 @@ class RPSGame extends Component {
         gas: '4300000',
         value: web3.toWei(this.state.stakedEther, 'ether'),
       },function(error, transactionHash) {
-        if (!error) {
+        if (error) {
+          console.log(error);
+        } else {
           console.log("player2 guess tx hash: " + transactionHash);
           this.setState({
             pendingTxHash: transactionHash
@@ -207,7 +203,9 @@ class RPSGame extends Component {
   render() {
     // waiting for pending tx
     if (this.state.pendingTxHash) {
-      <PendingTxHashMessage pendingTxHash={this.state.pendingTxHash} />
+      return (
+        <PendingTxHashMessage pendingTxHash={this.state.pendingTxHash} />
+      )
     }
 
     // game over
