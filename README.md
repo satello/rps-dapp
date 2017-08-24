@@ -23,7 +23,7 @@ yarn run start
 yarn run build
 ```
 
-- Run app on webserver of your choice
+- Run build/ on webserver of your choice
 
 e.g. to run production on your local machine
 ```
@@ -55,4 +55,4 @@ Revealing the vote and payout:
 - When player 1 signed in with MetaMask to their original account goes back to the game page after player 2's transaction has been mined they will be able to prove their selection. To do this player 1 enters their selection and the salt. The contract will hash them and if they match will see who won the game.
 - The winner will be paid out the balance of the contract.
 - If there is a tie both players get their funds back.
-- There is a 5 minute timeout for the game. If a player does not complete their step in 5 minutes the other player can call the timeout function on the contract to recover funds (note: there is not a way to do this via the UI).
+- There is a 5 minute timeout for the game. If a player does not complete their step in 5 minutes the other player can call the timeout function on the contract to recover funds.
