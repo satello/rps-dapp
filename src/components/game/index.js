@@ -309,7 +309,8 @@ class RPSGame extends Component {
 
     return (
       <div className="RPSGame">
-        <div className="btn timeout-btn" onClick={this.callTimeout.bind(this)}>Call Timeout</div>
+        <div className="btn rps-btn" onClick={this.callTimeout.bind(this)}>Call Timeout</div>
+        <div className="btn rps-btn"><a href="/">New Game</a></div>
         {body}
       </div>
     )

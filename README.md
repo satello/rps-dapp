@@ -1,6 +1,10 @@
-Rock Paper Scissors Lizard Spock DApp.
+## Rock Paper Scissors Lizard Spock DApp.
 
 Must have Metamask installed in your browser. Tested with Chrome v.60.0.3112.90
+
+Check it out at http://rps-dapp.samvitello.com
+
+WARNING: MetaMask is still in beta and sometimes runs into problems submitting transactions. I would advice only using this DApp on testnets.
 
 ## Quick Start
 

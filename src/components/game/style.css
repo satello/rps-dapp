@@ -18,7 +18,13 @@
   display: block;
 }
 
-.RPSGame .timeout-btn {
+.RPSGame .rps-btn {
   background-color: #cccccc;
   margin-top: 15px;
+  margin-right: 15px;
+}
+
+.RPSGame .rps-btn a {
+  text-decoration: inherit;
+  color: inherit;
 }
