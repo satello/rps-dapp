@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 
 // local
-import { PendingTxHashMessage } from '../home';
+import { PendingTxHashMessage, MovesDropdown } from '../home';
 import './style.css';
 import { CONTRACT_ABI, GAS_LIMIT } from '../../constants.js';
 
@@ -24,22 +24,6 @@ const initialState = {
   pendingTxHash: null,
   readyForReveal: false,
   gameComplete: false,
-}
-
-/*
-* Stateless dropdown compoennt for game options
-*/
-const MovesDropdown = (props) => {
-  return (
-    <select onChange={props.onChange}>
-      <option value={null}></option>
-      <option value={1}>Rock</option>
-      <option value={2}>Paper</option>
-      <option value={3}>Scissors</option>
-      <option value={4}>Lizard</option>
-      <option value={5}>Spock</option>
-    </select>
-  )
 }
 
 
@@ -102,7 +86,6 @@ class RPSGame extends Component {
     const contractInstance = rpsGameContract.at(gameAddress);
     if (contractInstance) {
       contractInstance.j1((error, result) => {
-        // console.log(web3.toAscii(result));
         this.setState({
           player1Address: result
         });

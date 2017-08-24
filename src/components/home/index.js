@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import { browserHistory } from 'react-router';
-
+// web3.sha3 handles numbers differently than solidity
+import abi from 'ethereumjs-abi';
 // local
 import './style.css';
 import { CONTRACT_BYTECODE, CONTRACT_ABI, GAS_LIMIT } from '../../constants.js';
@@ -24,6 +25,21 @@ export const PendingTxHashMessage = (props) => {
   );
 }
 
+/*
+* Stateless dropdown compoennt for game options
+*/
+export const MovesDropdown = (props) => {
+  return (
+    <select onChange={props.onChange}>
+      <option value={null}></option>
+      <option value={1}>Rock</option>
+      <option value={2}>Paper</option>
+      <option value={3}>Scissors</option>
+      <option value={4}>Lizard</option>
+      <option value={5}>Spock</option>
+    </select>
+  )
+}
 
 class Home extends Component {
   constructor(props) {
@@ -32,8 +48,9 @@ class Home extends Component {
     this.state = {
       pendingTxHash: null,
       stakedEther: 0,
-      selectionHash: null,
       player2address: null,
+      salt: null,
+      player1Guess: null,
     }
   }
 
@@ -74,11 +91,13 @@ class Home extends Component {
 
   startGame(e) {
     e.preventDefault();
-    if (!this.state.player2address || !this.state.stakedEther || !this.state.selectionHash) {
+    if (!this.state.player2address || !this.state.stakedEther || !this.state.salt || !this.state.player1Guess) {
       // TODO error handling
       return;
     }
-    this.deployRPSGame(this.state.selectionHash, this.state.player2address, this.state.stakedEther);
+    // hash the guess and the salt
+    const selectionHash = '0x' + abi.soliditySHA3(["uint8", "uint256"],[this.state.player1Guess, this.state.salt]).toString('hex');
+    this.deployRPSGame(selectionHash, this.state.player2address, this.state.stakedEther);
   }
 
   goToGame(e) {
@@ -115,16 +134,13 @@ class Home extends Component {
         <div className="start-game">
           <form onSubmit={(e) => this.startGame(e)}>
             <label htmlFor="selection-hash">
-              Selection Hash: keccak256 hash your selection (one of: [Rock: 1, Paper: 2, Scissors: 3, Spock: 4, Lizard: 5]),
-              and a salt you select. Make sure you don't forget your salt! (e.g. to select Rock hash keccak256(1, salt))
+              Selection
             </label>
-            <input
-              id="selection-hash"
-              name="selectionHash"
-              type="text"
-              placeholder="e.g. 0x9b68e489a07c86105b2c34adda59d3851d6f33abd41be6e9559cf783147db5dd"
-              onChange={this.handleInputChange.bind(this)}
-            />
+            <div className="selection-hash">
+              <MovesDropdown onChange={(e) => {this.setState({player1Guess: e.target.value})}}/>
+            </div>
+            <label htmlFor="salt">Salt</label>
+            <input type="number" id="salt" name="salt" onChange={this.handleInputChange.bind(this)} placeholder="e.g. 23525"/>
             <label htmlFor="opponent-address">Address of Opponent</label>
             <input
               id="opponent-address"
