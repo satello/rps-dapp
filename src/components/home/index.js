@@ -49,7 +49,6 @@ class Home extends Component {
       pendingTxHash: null,
       stakedEther: 0,
       player2address: null,
-      salt: null,
       player1Guess: null,
     }
   }
@@ -91,12 +90,19 @@ class Home extends Component {
 
   startGame(e) {
     e.preventDefault();
-    if (!this.state.player2address || !this.state.stakedEther || !this.state.salt || !this.state.player1Guess) {
+    if (!this.state.player2address || !this.state.stakedEther || !this.state.player1Guess) {
       // TODO error handling
       return;
     }
+    // generate a salt for the
+    const salt = this.generateSalt();
+    // set cookie with salt
+    localStorage.setItem("rps", JSON.stringify({
+      salt: salt,
+      selection: this.state.player1Guess,
+    }));
     // hash the guess and the salt
-    const selectionHash = '0x' + abi.soliditySHA3(["uint8", "uint256"],[this.state.player1Guess, this.state.salt]).toString('hex');
+    const selectionHash = '0x' + abi.soliditySHA3(["uint8", "uint256"],[this.state.player1Guess, salt]).toString('hex');
     this.deployRPSGame(selectionHash, this.state.player2address, this.state.stakedEther);
   }
 
@@ -112,6 +118,12 @@ class Home extends Component {
     this.setState({
       [name]: target.value
     });
+  }
+
+  generateSalt()   {
+    const byteArray = new Uint32Array(1);
+    window.crypto.getRandomValues(byteArray);
+    return byteArray[0];
   }
 
   render() {
@@ -139,8 +151,6 @@ class Home extends Component {
             <div className="selection-hash">
               <MovesDropdown onChange={(e) => {this.setState({player1Guess: e.target.value})}}/>
             </div>
-            <label htmlFor="salt">Salt</label>
-            <input type="number" id="salt" name="salt" onChange={this.handleInputChange.bind(this)} placeholder="e.g. 23525"/>
             <label htmlFor="opponent-address">Address of Opponent</label>
             <input
               id="opponent-address"

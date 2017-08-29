@@ -19,7 +19,6 @@ const initialState = {
   stakedEther: null,
   selectionHash: null,
   player1Guess: null,
-  salt: null,
   player2Guess: null,
   pendingTxHash: null,
   readyForReveal: false,
@@ -44,10 +43,15 @@ class RPSGame extends Component {
 
   player1Reveal(e) {
     e.preventDefault();
-    // TODO error handling
-    if (!this.state.player1Guess || !this.state.salt) return;
+    // fetch salt and selection
+    const rpsData = JSON.parse(localStorage.getItem("rps"));
+    if (!rpsData.salt || !rpsData.selection) {
+      // TODO error handling
+      console.log("ERROR: game data not found");
+      return;
+    }
 
-    this.submitSolution();
+    this.submitSolution(rpsData.selection, rpsData.salt);
   }
 
   /*
@@ -55,7 +59,6 @@ class RPSGame extends Component {
   * TODO have some mechanism to stop watching if tx not picked up in n blocks
   */
   listenForHash(txHash) {
-    // FIXME not a huge fan of this hack
     const _this = this;
     // Wait for tx to be mined
     var filter = web3.eth.filter('latest').watch((err, blockHash) => {
@@ -152,11 +155,11 @@ class RPSGame extends Component {
   /*
   * Call solve() in on chain contract
   */
-  submitSolution() {
+  submitSolution(selection, salt) {
     const contractInstance = rpsGameContract.at(this.state.currentGameAddress);
     contractInstance.solve(
-      this.state.player1Guess,
-      this.state.salt,
+      selection,
+      salt,
       {
         from: web3.eth.accounts[0],
         gas: GAS_LIMIT,
@@ -239,10 +242,7 @@ class RPSGame extends Component {
         options = (
           <div className="player-1-reveal">
             <form onSubmit={this.player1Reveal.bind(this)}>
-              <MovesDropdown onChange={(e) => {this.setState({player1Guess: e.target.value})}}/>
-              <label htmlFor="salt">Salt</label>
-              <input type="number" id="salt" name="salt" onChange={this.handleInputChange.bind(this)}/>
-              <button>Submit</button>
+              <button>Reveal Selection</button>
             </form>
           </div>
         )
