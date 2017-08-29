@@ -255,7 +255,7 @@ class RPSGame extends Component {
             <p>Player 1 address: {this.state.player1Address}</p>
             <p>Player 2 address: {this.state.player2Address}</p>
             <p>Ether Stake: {this.state.stakedEther}</p>
-            <p>Note: Inputs will not be visible unless current user is player 2</p>
+            <p>Note: Inputs will not be visible unless current user is player 1</p>
           </div>
           {options}
         </div>

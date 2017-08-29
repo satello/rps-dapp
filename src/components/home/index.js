@@ -139,7 +139,7 @@ class Home extends Component {
           <h1>Start A New Game</h1>
           <p>This is a DApp for Rock, Paper, Scissors, Spock, Lizard. See the rules
             <a href="https://en.wikipedia.org/wiki/Rock%E2%80%93paper%E2%80%93scissors#Additional_weapons"> here</a>.
-            Select an opponent, stake some ETH and submit a hash of your selection. Your opponent will select
+            Select an opponent, stake some ETH and submit your selection. Your opponent will select
             their option and stake ether. Then you must reveal your vote. The winner receives the combined bids
           </p>
         </div>
